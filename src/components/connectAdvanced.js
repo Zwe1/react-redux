@@ -128,6 +128,7 @@ export default function connectAdvanced(
     function makeDerivedPropsSelector() {
       let lastProps
       let lastState
+      // 做了缓存策略
       let lastDerivedProps
       let lastStore
       let lastSelectorFactoryOptions
@@ -140,6 +141,7 @@ export default function connectAdvanced(
         selectorFactoryOptions
       ) {
         if (pure && lastProps === props && lastState === state) {
+          // 缓存处理，state和props在pureComponent中未更新时返回说明组件无需更新，返回久的props即可
           return lastDerivedProps
         }
 
@@ -149,6 +151,8 @@ export default function connectAdvanced(
         ) {
           lastStore = store
           lastSelectorFactoryOptions = selectorFactoryOptions
+          // selectorFactory返回了合并props的闭包，闭包中中对state和dispatchCreator等做了更新优化和处理，
+          // 返回了新的合并后的props。
           sourceSelector = selectorFactory(
             store.dispatch,
             selectorFactoryOptions
@@ -157,15 +161,17 @@ export default function connectAdvanced(
 
         lastProps = props
         lastState = state
-
+        // 调用merge闭包生成新的props。
         const nextProps = sourceSelector(state, props)
 
         lastDerivedProps = nextProps
+        // 得到合并后的props，这个props已经连接了redux与react组件，向组件注入了props。
         return lastDerivedProps
       }
     }
 
     function makeChildElementSelector() {
+      // 声明的lastChildElement变量，都是用于做缓存处理的。其他变量用于记录上一个状态点，与新状态做比较用。
       let lastChildProps, lastForwardRef, lastChildElement, lastComponent
 
       return function selectChildElement(
@@ -178,6 +184,7 @@ export default function connectAdvanced(
           forwardRef !== lastForwardRef ||
           lastComponent !== WrappedComponent
         ) {
+          // 根据变化更新组件，并刷新缓存
           lastChildProps = childProps
           lastForwardRef = forwardRef
           lastComponent = WrappedComponent
@@ -185,7 +192,7 @@ export default function connectAdvanced(
             <WrappedComponent {...childProps} ref={forwardRef} />
           )
         }
-
+        // 永远返回的是这个对象变量
         return lastChildElement
       }
     }
@@ -198,18 +205,23 @@ export default function connectAdvanced(
           'Passing redux store in props has been removed and does not do anything. ' +
             customStoreWarningMessage
         )
+        // 以下是每个被connect后的组件实例的特有值
+
+        // 得到合并props的闭包
         this.selectDerivedProps = makeDerivedPropsSelector()
+        // 得到子组件的闭包
         this.selectChildElement = makeChildElementSelector()
         this.indirectRenderWrappedComponent = this.indirectRenderWrappedComponent.bind(
           this
         )
       }
-
+      // Consumer的子组件。Context中consumer默认接收provider提供的值
       indirectRenderWrappedComponent(value) {
         // calling renderWrappedComponent on prototype from indirectRenderWrappedComponent bound to `this`
         return this.renderWrappedComponent(value)
       }
 
+      // 用于渲染的方法
       renderWrappedComponent(value) {
         invariant(
           value,
@@ -218,23 +230,27 @@ export default function connectAdvanced(
             `or pass a custom React context provider to <Provider> and the corresponding ` +
             `React context consumer to ${displayName} in connect options.`
         )
+        // provider api中存储的redux中的状态和store api
         const { storeState, store } = value
 
         let wrapperProps = this.props
         let forwardedRef
-
+        // 兼容新版本react的forwardRef API
         if (forwardRef) {
           wrapperProps = this.props.wrapperProps
           forwardedRef = this.props.forwardedRef
         }
 
+        // 获得衍生的合并后props,其中包含了组件mapStateToProps获取的部分或全部reduxstore,
+        // 以及包裹了dispatch的actionCreators函数们。
+        // 从而实现了将redux注入到react组件props中，并且自动dispatch的功能。
         let derivedProps = this.selectDerivedProps(
           storeState,
           wrapperProps,
           store,
           selectorFactoryOptions
         )
-
+        // 最后使用这些props，注入到被connect的组件中。
         return this.selectChildElement(
           WrappedComponent,
           derivedProps,
@@ -250,6 +266,7 @@ export default function connectAdvanced(
             ? this.props.context
             : Context
 
+        // consumer使用应用provider提供的一些资源，并且这些资源以被react-redux做了中间层处理
         return (
           <ContextToUse.Consumer>
             {this.indirectRenderWrappedComponent}
@@ -273,7 +290,7 @@ export default function connectAdvanced(
       forwarded.WrappedComponent = WrappedComponent
       return hoistStatics(forwarded, WrappedComponent)
     }
-
+    // 继承connect的一系列特性，返回经处理的组件
     return hoistStatics(Connect, WrappedComponent)
   }
 }

@@ -23,11 +23,13 @@ import defaultSelectorFactory from './selectorFactory'
  */
 
 function match(arg, factories, name) {
+  // 将mapStateToPropfactoriess或mapDispatchToProps作为参数传入factories中。
+  // factories是内置的检验工具。
   for (let i = factories.length - 1; i >= 0; i--) {
     const result = factories[i](arg)
     if (result) return result
   }
-
+  // 如果校验不通过，进行报错警告⚠️
   return (dispatch, options) => {
     throw new Error(
       `Invalid value of type ${typeof arg} for ${name} argument when connecting component ${
@@ -40,6 +42,9 @@ function match(arg, factories, name) {
 function strictEqual(a, b) {
   return a === b
 }
+
+// 此处调用createConnect，返回一个函数。通过闭包向真正的connect函数注入一些默认参数。
+// 比较核心的函数如connectHOC。
 
 // createConnect with default args builds the 'official' connect behavior. Calling it with
 // different options opens up some testing and extensibility scenarios

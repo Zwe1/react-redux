@@ -6,6 +6,7 @@ export function impureFinalPropsSelectorFactory(
   mergeProps,
   dispatch
 ) {
+  // 无需做资源缓存，每次产生生成新的mergeProps
   return function impureFinalPropsSelector(state, ownProps) {
     return mergeProps(
       mapStateToProps(state, ownProps),
@@ -29,6 +30,7 @@ export function pureFinalPropsSelectorFactory(
   let dispatchProps
   let mergedProps
 
+  // pureFinalPropsSelectorFactory第一次运行，合并props
   function handleFirstCall(firstState, firstOwnProps) {
     state = firstState
     ownProps = firstOwnProps
@@ -39,6 +41,7 @@ export function pureFinalPropsSelectorFactory(
     return mergedProps
   }
 
+  // 产生了新的props和states
   function handleNewPropsAndNewState() {
     stateProps = mapStateToProps(state, ownProps)
 
@@ -49,8 +52,10 @@ export function pureFinalPropsSelectorFactory(
     return mergedProps
   }
 
+  // 只有props发生了更新
   function handleNewProps() {
     if (mapStateToProps.dependsOnOwnProps)
+      // 但是当state依赖props时，还是需要生成新的stateprops
       stateProps = mapStateToProps(state, ownProps)
 
     if (mapDispatchToProps.dependsOnOwnProps)
@@ -60,6 +65,7 @@ export function pureFinalPropsSelectorFactory(
     return mergedProps
   }
 
+  // state发生了变化
   function handleNewState() {
     const nextStateProps = mapStateToProps(state, ownProps)
     const statePropsChanged = !areStatePropsEqual(nextStateProps, stateProps)
@@ -71,7 +77,10 @@ export function pureFinalPropsSelectorFactory(
     return mergedProps
   }
 
+  // 第N次调用pureFinalPropsSelectorFactory方法。
+  // 根据states和props的变化与否，做了适当的更新和缓存。
   function handleSubsequentCalls(nextState, nextOwnProps) {
+    // 几个比较相等的方法参见 shallowEqual 文件夹
     const propsChanged = !areOwnPropsEqual(nextOwnProps, ownProps)
     const stateChanged = !areStatesEqual(nextState, state)
     state = nextState
@@ -84,6 +93,7 @@ export function pureFinalPropsSelectorFactory(
   }
 
   return function pureFinalPropsSelector(nextState, nextOwnProps) {
+    // tips：这两部分可以合并写，减小代码复杂度。
     return hasRunAtLeastOnce
       ? handleSubsequentCalls(nextState, nextOwnProps)
       : handleFirstCall(nextState, nextOwnProps)
@@ -92,6 +102,8 @@ export function pureFinalPropsSelectorFactory(
 
 // TODO: Add more comments
 
+// 如果pure设置为true，selector生成器将会缓存返回结果。允许connectAdvanced生产的组件中shouldComponentUpdate返回false以实现性能优化。
+// 如果pure设置为false。selector总是返回一个新的对象，而shouldComponentUpdate将一直返回true。
 // If pure is true, the selector returned by selectorFactory will memoize its results,
 // allowing connectAdvanced's shouldComponentUpdate to return false if final
 // props have not changed. If false, the selector will always return a new
@@ -114,6 +126,7 @@ export default function finalPropsSelectorFactory(
     )
   }
 
+  // 存在两种模式，一种是purecomponent 一种是普通的component。purecomponent做了showcomponentupdate的性能优化。
   const selectorFactory = options.pure
     ? pureFinalPropsSelectorFactory
     : impureFinalPropsSelectorFactory

@@ -11,11 +11,12 @@ export function wrapMergePropsFunc(mergeProps) {
   ) {
     let hasRunOnce = false
     let mergedProps
-
+    // 对mergeProps做了性能优化
     return function mergePropsProxy(stateProps, dispatchProps, ownProps) {
       const nextMergedProps = mergeProps(stateProps, dispatchProps, ownProps)
 
       if (hasRunOnce) {
+        // 性能优化点，阻止不必要的新props的生成
         if (!pure || !areMergedPropsEqual(nextMergedProps, mergedProps))
           mergedProps = nextMergedProps
       } else {

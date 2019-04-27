@@ -2,7 +2,13 @@ import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { ReactReduxContext } from './Context'
 
+// use examples
+// <Provider store={store}>
+//    <APP />
+// </Provider>
+
 class Provider extends Component {
+  // Provider的使用如
   constructor(props) {
     super(props)
 
